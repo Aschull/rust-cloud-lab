@@ -14,10 +14,9 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
 
-# Estágio 3: Runtime
-FROM debian:bookworm-slim
+# Estágio 3: Runtime — mesma base do builder!
+FROM rust:latest
 WORKDIR /app
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/rust-cloud-lab .
 EXPOSE 3000
 CMD ["./rust-cloud-lab"]
