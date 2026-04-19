@@ -4,6 +4,7 @@ use axum::{Json, Router, extract::State, routing::get, routing::post};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use uuid::Uuid;
 
 struct AppState {
     s3: S3Client,
@@ -33,7 +34,7 @@ async fn main() {
         .build();
 
     let s3 = S3Client::from_conf(s3_config);
-    let bucket = "rust-cloud-lab".to_string();
+    let bucket = "rust-cloud-lab-logs".to_string();
 
     let _ = s3.create_bucket().bucket(&bucket).send().await;
 
@@ -59,11 +60,12 @@ async fn save_message(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Message>,
 ) -> Json<serde_json::Value> {
+    let key = format!("{}.txt", Uuid::new_v4());
     let result = state
         .s3
         .put_object()
         .bucket(&state.bucket)
-        .key("message.txt")
+        .key(key)
         .body(payload.content.into_bytes().into())
         .send()
         .await;
@@ -75,20 +77,46 @@ async fn save_message(
 }
 
 async fn read_message(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let result = state
+    // 1. Lista todos os arquivos do bucket
+    let list = state
         .s3
-        .get_object()
+        .list_objects_v2()
         .bucket(&state.bucket)
-        .key("message.txt")
         .send()
         .await;
 
-    match result {
-        Ok(output) => {
-            let bytes = output.body.collect().await.unwrap().into_bytes();
-            let content = String::from_utf8(bytes.to_vec()).unwrap();
-            Json(serde_json::json!({ "message": content }))
-        }
-        Err(_) => Json(serde_json::json!({ "erro": "nenhuma mensagem salva ainda" })),
+    let objects = match list {
+        Ok(output) => output.contents.unwrap_or_default(),
+        Err(e) => return Json(serde_json::json!({ "erro": e.to_string() })),
+    };
+
+    if objects.is_empty() {
+        return Json(serde_json::json!({ "messages": [] }));
     }
+
+    // 2. Busca o conteúdo de cada arquivo
+    let mut messages = vec![];
+
+    for obj in objects {
+        let key = obj.key.unwrap_or_default();
+
+        let result = state
+            .s3
+            .get_object()
+            .bucket(&state.bucket)
+            .key(&key)
+            .send()
+            .await;
+
+        if let Ok(output) = result {
+            let bytes = output.body.collect().await.unwrap().into_bytes();
+            let content = String::from_utf8(bytes.to_vec()).unwrap_or_default();
+            messages.push(serde_json::json!({
+                "id": key,
+                "content": content
+            }));
+        }
+    }
+
+    Json(serde_json::json!({ "messages": messages }))
 }

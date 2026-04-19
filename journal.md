@@ -45,6 +45,18 @@
 ### Listar Buckets
 > aws --endpoint-url=http://localhost:4566 s3 ls
 
+### Deletar bucket vazio
+> aws --endpoint-url=http://localhost:4566 s3 rb s3://meu-bucket
+
+### Deletar bucket com arquivos dentro
+> aws --endpoint-url=http://localhost:4566 s3 rb s3://meu-bucket --force
+
+### Listar arquivos dentro de um bucket
+> aws --endpoint-url=http://localhost:4566 s3 ls s3://meu-bucket
+
+### Listar arquivos de forma recursiva (mostra subpastas)
+> aws --endpoint-url=http://localhost:4566 s3 ls s3://meu-bucket --recursive
+
 ### Criar uma fila SQS
 > aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name minha-fila
 
