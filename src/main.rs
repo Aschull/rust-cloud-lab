@@ -1,44 +1,24 @@
-use aws_config::BehaviorVersion;
-use aws_sdk_s3::Client as S3Client;
 use axum::{Json, Router, extract::State, routing::get, routing::post};
-use serde::{Deserialize, Serialize};
+use dotenvy::dotenv;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use uuid::Uuid;
-
-struct AppState {
-    s3: S3Client,
-    bucket: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Message {
-    content: String,
-}
+mod dto;
+use dto::message::Message;
+mod infra;
+use infra::s3::app_state::AppState;
+use infra::s3::s3::S3;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
+    dotenv().ok();
 
-    let endpoint =
-        std::env::var("AWS_ENDPOINT_URL").unwrap_or_else(|_| "http://localstack:4566".to_string());
+    let s3 = S3::new().await;
+    let info: String = s3.info();
+    println!("S3 INFOS: {}", info);
 
-    let config = aws_config::defaults(BehaviorVersion::latest())
-        .endpoint_url(&endpoint)
-        .load()
-        .await;
-
-    // LocalStack precisa de force_path_style!
-    let s3_config = aws_sdk_s3::config::Builder::from(&config)
-        .force_path_style(true)
-        .build();
-
-    let s3 = S3Client::from_conf(s3_config);
-    let bucket = "rust-cloud-lab-logs".to_string();
-
-    let _ = s3.create_bucket().bucket(&bucket).send().await;
-
-    let state = Arc::new(AppState { s3, bucket });
+    let state = Arc::new(AppState::new(s3.s3.unwrap(), s3.bucket.clone()));
 
     let app = Router::new()
         .route("/", get(|| async { "API Rust conectada ao LocalStack!" }))

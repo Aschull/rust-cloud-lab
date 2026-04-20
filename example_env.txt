@@ -1,0 +1,2 @@
+AWS_ENDPOINT_URL=http://localhost:4566
+BUCKET_NAME=rust-cloud-lab-logs
