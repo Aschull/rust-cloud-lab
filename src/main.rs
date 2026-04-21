@@ -17,19 +17,19 @@ async fn main() {
     dotenv().ok();
 
     let s3 = S3::new().await;
-    let info: String = s3.info();
-    println!("S3 INFOS: {}", info);
+    tracing::info!("S3 INFOS: {}", s3.info());
 
-    let state = Arc::new(AppState::new(s3.s3.unwrap(), s3.bucket.clone()));
+    let state = Arc::new(AppState::new(s3.s3, s3.bucket.clone()));
 
     let app = Router::new()
         .route("/", get(|| async { "API Rust conectada ao LocalStack!" }))
-        // Aqui você "anexa" as rotas de mensagens
         .merge(s3_routes())
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::info!("Servidor rodando em http://{}", addr);
+
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+
+    tracing::info!("Servidor rodando em http://{}", addr);
     axum::serve(listener, app).await.unwrap();
 }

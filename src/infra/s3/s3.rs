@@ -5,7 +5,7 @@ use std::env;
 pub struct S3 {
     pub endpoint: String,
     pub bucket: String,
-    pub s3: Option<Client>,
+    pub s3: Client,
 }
 
 impl S3 {
@@ -31,7 +31,7 @@ impl S3 {
         Self {
             endpoint,
             bucket: bucket.to_string(),
-            s3: Some(s3),
+            s3,
         }
     }
 

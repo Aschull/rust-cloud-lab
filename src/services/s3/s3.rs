@@ -16,7 +16,10 @@ pub async fn read_message(State(state): State<Arc<AppState>>) -> Json<serde_json
 
     let objects = match list {
         Ok(output) => output.contents.unwrap_or_default(),
-        Err(e) => return Json(serde_json::json!({ "erro": e.to_string() })),
+        Err(e) => {
+            tracing::error!("Erro ao listar S3: {:?}", e);
+            return Json(serde_json::json!({ "erro": format!("{:?}", e) }));
+        }
     };
 
     if objects.is_empty() {
@@ -66,7 +69,10 @@ pub async fn save_message(
 
     match result {
         Ok(_) => Json(serde_json::json!({ "status": "salvo no S3!" })),
-        Err(e) => Json(serde_json::json!({ "erro": e.to_string() })),
+        Err(e) => {
+            tracing::error!("Erro ao salvar no S3: {:?}", e);
+            Json(serde_json::json!({ "erro": format!("{:?}", e) }))
+        }
     }
 }
 
