@@ -1,3 +1,5 @@
+use crate::infra::s3::repository::S3Repository;
+use async_trait::async_trait;
 use aws_config::BehaviorVersion;
 use aws_sdk_s3::Client;
 use std::env;
@@ -37,5 +39,59 @@ impl S3 {
 
     pub fn info(&self) -> String {
         format!("Endpoint: {}, Bucket_Name: {}", self.endpoint, self.bucket)
+    }
+}
+
+#[async_trait]
+impl S3Repository for S3 {
+    async fn save(&self, bucket: &str, key: &str, content: Vec<u8>) -> Result<(), String> {
+        self.s3
+            .put_object()
+            .bucket(bucket)
+            .key(key)
+            .body(content.into())
+            .send()
+            .await
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    async fn list(&self, bucket: &str) -> Result<Vec<String>, String> {
+        let output = self
+            .s3
+            .list_objects_v2()
+            .bucket(bucket)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let keys = output
+            .contents
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|obj| obj.key)
+            .collect();
+
+        Ok(keys)
+    }
+
+    async fn get(&self, bucket: &str, key: &str) -> Result<String, String> {
+        let output = self
+            .s3
+            .get_object()
+            .bucket(bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let bytes = output
+            .body
+            .collect()
+            .await
+            .map_err(|e| e.to_string())?
+            .into_bytes();
+
+        String::from_utf8(bytes.to_vec()).map_err(|e| e.to_string())
     }
 }
