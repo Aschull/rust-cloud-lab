@@ -132,5 +132,5 @@ rust-cloud-lab/
 
 ## Próximos passos
 
-- [ ] Integração com SQS
+- [ ] Integração com SQS(Mensageria)
 - [ ] Serviço de IA com Burn
