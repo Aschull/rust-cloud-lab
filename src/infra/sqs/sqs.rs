@@ -22,20 +22,20 @@ impl Sqs {
     /// ```
     /// // Create a Tokio runtime to run the async initializer in documentation tests.
     /// let rt = tokio::runtime::Runtime::new().unwrap();
-    /// let sqs = rt.block_on(crate::infra::sqs::sqs::Sqs::new());
+    /// let sqs = rt.block_on(crate::infra::sqs::sqs::Sqs::new()).unwrap();
     /// assert!(!sqs.queue_url.is_empty());
     /// ```
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the `QUEUE_NAME` environment variable is not set, if creating the SQS queue fails,
+    /// Returns an error if the `QUEUE_NAME` environment variable is not set, if creating the SQS queue fails,
     /// or if the created queue response does not include a `QueueUrl`.
-    pub async fn new() -> Self {
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let endpoint = env::var("AWS_ENDPOINT_URL")
             .unwrap_or_else(|_| "http://localstack:4566".to_string());
 
         let queue_name = env::var("QUEUE_NAME")
-            .expect("QUEUE_NAME deve estar definido no .env");
+            .map_err(|_| "QUEUE_NAME deve estar definido no .env")?;
 
         let config = aws_config::defaults(BehaviorVersion::latest())
             .endpoint_url(&endpoint)
@@ -49,12 +49,12 @@ impl Sqs {
             .create_queue()
             .queue_name(&queue_name)
             .send()
-            .await
-            .expect("Falha ao criar fila SQS");
+            .await?;
 
-        let queue_url = result.queue_url.expect("QueueUrl não retornado");
+        let queue_url = result.queue_url
+            .ok_or("QueueUrl não retornado")?;
 
-        Self { endpoint, queue_url, client }
+        Ok(Self { endpoint, queue_url, client })
     }
 
     /// Format the SQS connection endpoint and queue URL into a human-readable string.
@@ -111,6 +111,7 @@ impl SqsRepository for Sqs {
     /// Receives up to 10 messages from the given SQS queue and returns their message bodies.
     ///
     /// The returned vector contains only message bodies; messages without a body are skipped.
+    /// Messages are deleted from the queue after being received.
     ///
     /// # Examples
     ///
@@ -130,12 +131,24 @@ impl SqsRepository for Sqs {
             .await
             .map_err(|e| e.to_string())?;
 
-        let messages = output
-            .messages
-            .unwrap_or_default()
-            .into_iter()
-            .filter_map(|m| m.body)
-            .collect();
+        let mut messages = Vec::new();
+
+        for message in output.messages.unwrap_or_default() {
+            if let Some(body) = message.body {
+                if let Some(receipt_handle) = message.receipt_handle {
+                    // Delete the message from the queue
+                    self.client
+                        .delete_message()
+                        .queue_url(queue_url)
+                        .receipt_handle(&receipt_handle)
+                        .send()
+                        .await
+                        .map_err(|e| format!("Failed to delete message: {}", e))?;
+
+                    messages.push(body);
+                }
+            }
+        }
 
         Ok(messages)
     }

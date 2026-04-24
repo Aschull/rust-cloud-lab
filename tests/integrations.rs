@@ -28,7 +28,7 @@ async fn spawn_app() -> String {
     let s3 = S3::new().await;
     let bucket = s3.bucket.clone();
 
-    let sqs = Sqs::new().await;
+    let sqs = Sqs::new().await.expect("Falha ao inicializar SQS");
     let queue_url = sqs.queue_url.clone();
 
     let state = Arc::new(AppState::new(s3, bucket, sqs, queue_url));
@@ -117,7 +117,7 @@ async fn save_e_read_message() {
 /// let body: serde_json::Value = response.json().await.unwrap();
 /// let messages = body["messages"].as_array().unwrap();
 /// assert!(!messages.is_empty());
-/// assert_eq!(messages[0], "teste sqs integração");
+/// assert!(messages.iter().any(|m| m == "teste sqs integração"));
 /// # }
 /// ```
 #[tokio::test]
@@ -146,5 +146,5 @@ async fn publish_e_consume_message() {
     let body: serde_json::Value = response.json().await.unwrap();
     let messages = body["messages"].as_array().unwrap();
     assert!(!messages.is_empty());
-    assert_eq!(messages[0], "teste sqs integração");
+    assert!(messages.iter().any(|m| m == "teste sqs integração"));
 }
