@@ -8,6 +8,19 @@ use rust_cloud_lab::infra::sqs::sqs::Sqs;
 use rust_cloud_lab::routes::s3::s3_routes;
 use rust_cloud_lab::routes::sqs::sqs_routes;
 
+/// Starts the HTTP server and application infrastructure.
+///
+/// Initializes tracing, loads environment variables, constructs S3 and SQS clients,
+/// assembles shared application state, registers routes for S3 and SQS, binds to
+/// 0.0.0.0:3000, and serves the Axum application.
+///
+/// # Examples
+///
+/// ```no_run
+/// // Starts the server (will block the current thread).
+/// // Run the compiled binary instead of executing this example.
+/// main();
+/// ```
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();

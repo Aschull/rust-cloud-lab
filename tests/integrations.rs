@@ -8,6 +8,20 @@ use rust_cloud_lab::routes::s3::s3_routes;
 use rust_cloud_lab::routes::sqs::sqs_routes;
 use std::sync::Arc;
 
+/// Starts a test HTTP server wired to LocalStack and returns its base URL.
+///
+/// The server is configured with S3 and SQS clients, mounts the application routes
+/// (including health, S3 and SQS endpoints), and binds to an ephemeral localhost
+/// port so tests can interact with it without port collisions.
+///
+/// # Examples
+///
+/// ```
+/// # async fn run() {
+/// let base_url = spawn_app().await;
+/// // e.g. use reqwest to call endpoints: format!("{}/health", base_url)
+/// # }
+/// ```
 async fn spawn_app() -> String {
     dotenvy::from_filename(".env.test").ok();
 
@@ -73,6 +87,39 @@ async fn save_e_read_message() {
     assert_eq!(messages[0]["content"], "teste de integração");
 }
 
+/// Integration test that publishes a message to the queue endpoint and then verifies it can be retrieved.
+///
+/// # Examples
+///
+/// ```
+/// # async fn run() {
+/// let addr = spawn_app().await;
+/// let client = reqwest::Client::new();
+///
+/// let response = client
+///     .post(format!("{}/queue/message", addr))
+///     .json(&serde_json::json!({ "content": "teste sqs integração" }))
+///     .send()
+///     .await
+///     .unwrap();
+///
+/// assert_eq!(response.status(), 200);
+/// let body: serde_json::Value = response.json().await.unwrap();
+/// assert_eq!(body["status"], "mensagem publicada na fila!");
+///
+/// let response = client
+///     .get(format!("{}/queue/message", addr))
+///     .send()
+///     .await
+///     .unwrap();
+///
+/// assert_eq!(response.status(), 200);
+/// let body: serde_json::Value = response.json().await.unwrap();
+/// let messages = body["messages"].as_array().unwrap();
+/// assert!(!messages.is_empty());
+/// assert_eq!(messages[0], "teste sqs integração");
+/// # }
+/// ```
 #[tokio::test]
 async fn publish_e_consume_message() {
     let addr = spawn_app().await;
