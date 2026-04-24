@@ -10,15 +10,31 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      localstack:
+        image: localstack/localstack:3.0
+        ports:
+          - 4566:4566
+        env:
+          DNS_ADDRESS: "0"
+
     steps:
-      - name: Checkout código
+      - name: Code Checkout
         uses: actions/checkout@v4
 
-      - name: Instala Rust
+      - name: Rust Install
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache dependências
+      - name: Dependency Cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Roda unit tests
-        run: cargo test --lib
+      - name: Run Tests
+        run: cargo test
+        env:
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          BUCKET_NAME: rust-cloud-lab-test
+
+        

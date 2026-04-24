@@ -119,4 +119,3 @@ rust-cloud-lab/
 
 - [ ] Integração com SQS
 - [ ] Serviço de IA com Burn
-- [ ] Pipeline CI/CD
