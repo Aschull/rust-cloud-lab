@@ -1,77 +1,55 @@
+use crate::dto::message::Message;
+use crate::infra::s3::app_state::AppState;
+use crate::infra::s3::repository::S3Repository;
 use axum::{Json, extract::State};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::dto::message::Message;
-use crate::infra::s3::app_state::AppState;
-
-pub async fn read_message(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    // 1. Lista todos os arquivos do bucket
-    let list = state
-        .s3
-        .list_objects_v2()
-        .bucket(&state.bucket)
-        .send()
-        .await;
-
-    let objects = match list {
-        Ok(output) => output.contents.unwrap_or_default(),
+pub async fn read_message<R: S3Repository + Send + Sync>(
+    State(state): State<Arc<AppState<R>>>,
+) -> Json<serde_json::Value> {
+    let keys = match state.s3.list(&state.bucket).await {
+        Ok(keys) => keys,
         Err(e) => {
-            tracing::error!("Erro ao listar S3: {:?}", e);
-            return Json(serde_json::json!({ "erro": format!("{:?}", e) }));
+            tracing::error!("Erro ao listar S3: {}", e);
+            return Json(serde_json::json!({ "erro": e }));
         }
     };
 
-    if objects.is_empty() {
+    if keys.is_empty() {
         return Json(serde_json::json!({ "messages": [] }));
     }
 
-    // 2. Busca o conteúdo de cada arquivo
     let mut messages = vec![];
 
-    for obj in objects {
-        let key = obj.key.unwrap_or_default();
-
-        let result = state
-            .s3
-            .get_object()
-            .bucket(&state.bucket)
-            .key(&key)
-            .send()
-            .await;
-
-        if let Ok(output) = result {
-            let bytes = output.body.collect().await.unwrap().into_bytes();
-            let content = String::from_utf8(bytes.to_vec()).unwrap_or_default();
-            messages.push(serde_json::json!({
+    for key in keys {
+        match state.s3.get(&state.bucket, &key).await {
+            Ok(content) => messages.push(serde_json::json!({
                 "id": key,
                 "content": content
-            }));
+            })),
+            Err(e) => tracing::error!("Erro ao buscar {}: {}", key, e),
         }
     }
 
     Json(serde_json::json!({ "messages": messages }))
 }
 
-pub async fn save_message(
-    State(state): State<Arc<AppState>>,
+pub async fn save_message<R: S3Repository + Send + Sync>(
+    State(state): State<Arc<AppState<R>>>,
     Json(payload): Json<Message>,
 ) -> Json<serde_json::Value> {
     let key = format!("{}.txt", Uuid::new_v4());
-    let result = state
-        .s3
-        .put_object()
-        .bucket(&state.bucket)
-        .key(key)
-        .body(payload.content.into_bytes().into())
-        .send()
-        .await;
 
-    match result {
+    match state
+        .s3
+        .save(&state.bucket, &key, payload.content.into_bytes())
+        .await
+    {
         Ok(_) => Json(serde_json::json!({ "status": "salvo no S3!" })),
         Err(e) => {
-            tracing::error!("Erro ao salvar no S3: {:?}", e);
-            Json(serde_json::json!({ "erro": format!("{:?}", e) }))
+            tracing::error!("Erro ao salvar no S3: {}", e);
+            Json(serde_json::json!({ "erro": e }))
         }
     }
 }

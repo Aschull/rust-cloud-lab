@@ -1,12 +1,12 @@
-use aws_sdk_s3::Client;
+use crate::infra::s3::repository::S3Repository;
 
-pub struct AppState {
-    pub s3: Client,
+pub struct AppState<R: S3Repository> {
+    pub s3: R,
     pub bucket: String,
 }
 
-impl AppState {
-    pub fn new(s3: Client, bucket: String) -> Self {
+impl<R: S3Repository> AppState<R> {
+    pub fn new(s3: R, bucket: String) -> Self {
         Self { s3, bucket }
     }
 }

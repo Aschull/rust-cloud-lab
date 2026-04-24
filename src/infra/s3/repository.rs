@@ -1,5 +1,7 @@
 use async_trait::async_trait;
+use mockall::automock;
 
+#[automock]
 #[async_trait]
 pub trait S3Repository {
     async fn save(&self, bucket: &str, key: &str, content: Vec<u8>) -> Result<(), String>;
