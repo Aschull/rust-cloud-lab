@@ -2,7 +2,7 @@
 
 Projeto de estudo para aprender Cloud e Kubernetes na prática, visando alternativas gratuitas para estudo.
 Uma API REST construída com Rust + Axum, deployada localmente em Kubernetes (Kind),
-com storage simulado na AWS (S3) via LocalStack.
+com storage simulado na AWS (S3 e SQS) via LocalStack.
 
 ![CI](https://github.com/Aschull/rust-cloud-lab/actions/workflows/ci.yml/badge.svg)
 
@@ -13,7 +13,7 @@ com storage simulado na AWS (S3) via LocalStack.
 - **Rust + Axum** — API REST
 - **Docker** — containerização com multi-stage build
 - **Kind** — cluster Kubernetes local
-- **LocalStack** — simulador de serviços AWS (S3)
+- **LocalStack** — simulador de serviços AWS (S3 + SQS)
 - **GitHub Actions** — CI/CD
 
 ---
@@ -25,7 +25,7 @@ Cliente HTTP
      ↓
 API Axum (Rust)
      ↓
-S3 (LocalStack)
+S3 + SQS (LocalStack)
 ```
 
 | Ambiente          | Uso                    | Porta |
@@ -37,12 +37,14 @@ S3 (LocalStack)
 
 ## Endpoints
 
-| Método | Rota       | Descrição             |
-|--------|------------|-----------------------|
-| GET    | /          | Status da API         |
-| GET    | /health    | Health check          |
-| POST   | /message   | Salva mensagem no S3  |
-| GET    | /message   | Lista mensagens do S3 |
+| Método | Rota            | Descrição                    |
+|--------|-----------------|------------------------------|
+| GET    | /               | Status da API                |
+| GET    | /health         | Health check                 |
+| POST   | /message        | Salva mensagem no S3         |
+| GET    | /message        | Lista mensagens do S3        |
+| POST   | /queue/message  | Publica mensagem na fila SQS |
+| GET    | /queue/message  | Consome mensagens da fila    |
 
 ---
 
@@ -100,8 +102,8 @@ cargo test
 
 | Tipo        | Quantidade | Infraestrutura necessária |
 |-------------|------------|---------------------------|
-| Unit        | 3          | Nenhuma                   |
-| Integration | 2          | LocalStack                |
+| Unit        | 6          | Nenhuma                   |
+| Integration | 3          | LocalStack                |
 
 O CI/CD roda automaticamente no GitHub Actions a cada push, incluindo unit e integration tests com LocalStack.
 
@@ -113,7 +115,7 @@ O CI/CD roda automaticamente no GitHub Actions a cada push, incluindo unit e int
 rust-cloud-lab/
 ├── src/
 │   ├── dto/        # estruturas de entrada/saída
-│   ├── infra/      # conexões externas (S3)
+│   ├── infra/      # conexões externas (S3, SQS)
 │   ├── routes/     # definição dos endpoints
 │   ├── services/   # lógica de negócio
 │   ├── lib.rs
@@ -130,7 +132,21 @@ rust-cloud-lab/
 
 ---
 
+## Progresso
+
+- [x] Docker multi-stage build
+- [x] Docker Compose + LocalStack
+- [x] Cluster Kubernetes com Kind
+- [x] Deploy no Kubernetes
+- [x] S3 — salvar e listar mensagens
+- [x] SQS — publicar e consumir mensagens
+- [x] Trait Repository (S3 + SQS)
+- [x] Unit tests com Mock (6 testes)
+- [x] Integration tests com LocalStack (3 testes)
+- [x] CI/CD com GitHub Actions
+
+---
+
 ## Próximos passos
 
-- [ ] Integração com SQS(Mensageria)
 - [ ] Serviço de IA com Burn
