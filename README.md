@@ -4,6 +4,8 @@ Projeto de estudo para aprender Cloud e Kubernetes na prática, visando alternat
 Uma API REST construída com Rust + Axum, deployada localmente em Kubernetes (Kind),
 com storage simulado na AWS (S3) via LocalStack.
 
+![CI](https://github.com/Aschull/rust-cloud-lab/actions/workflows/ci.yml/badge.svg)
+
 ---
 
 ## Stack
@@ -12,20 +14,24 @@ com storage simulado na AWS (S3) via LocalStack.
 - **Docker** — containerização com multi-stage build
 - **Kind** — cluster Kubernetes local
 - **LocalStack** — simulador de serviços AWS (S3)
+- **GitHub Actions** — CI/CD
 
 ---
 
 ## Arquitetura
-Cliente HTTP
-↓
-API Axum (Rust)
-↓
-S3 (LocalStack)
 
-| Ambiente          | Uso                  | Porta |
-|-------------------|----------------------|-------|
-| Docker Compose    | Desenvolvimento rápido | 3000 |
-| Kubernetes (Kind) | Simular produção       | 3001 |
+```
+Cliente HTTP
+     ↓
+API Axum (Rust)
+     ↓
+S3 (LocalStack)
+```
+
+| Ambiente          | Uso                    | Porta |
+|-------------------|------------------------|-------|
+| Docker Compose    | Desenvolvimento rápido | 3000  |
+| Kubernetes (Kind) | Simular produção       | 3001  |
 
 ---
 
@@ -80,7 +86,7 @@ API disponível em http://localhost:3001
 
 Os testes unitários rodam sem nenhuma infraestrutura:
 ```bash
-cargo test
+cargo test --lib
 ```
 
 Os testes de integração precisam do LocalStack rodando:
@@ -97,21 +103,30 @@ cargo test
 | Unit        | 3          | Nenhuma                   |
 | Integration | 2          | LocalStack                |
 
+O CI/CD roda automaticamente no GitHub Actions a cada push, incluindo unit e integration tests com LocalStack.
+
 ---
 
 ## Estrutura
+
+```
 rust-cloud-lab/
 ├── src/
 │   ├── dto/        # estruturas de entrada/saída
 │   ├── infra/      # conexões externas (S3)
 │   ├── routes/     # definição dos endpoints
 │   ├── services/   # lógica de negócio
+│   ├── lib.rs
 │   └── main.rs
 ├── tests/          # integration tests
 ├── k8s/            # manifests Kubernetes
+├── .github/
+│   └── workflows/
+│       └── ci.yml  # pipeline CI/CD
 ├── Dockerfile
 ├── docker-compose.yaml
 └── example_env.txt
+```
 
 ---
 
