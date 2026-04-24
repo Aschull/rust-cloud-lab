@@ -29,7 +29,7 @@ async fn main() {
     let s3 = S3::new().await;
     tracing::info!("S3 INFOS: {}", s3.info());
 
-    let sqs = Sqs::new().await;
+    let sqs = Sqs::new().await.expect("Falha ao inicializar SQS");
     tracing::info!("SQS INFOS: {}", sqs.info());
 
     let bucket = s3.bucket.clone();
